@@ -1,5 +1,11 @@
-import { createApp } from 'vue'
-import './style.css'
-import App from './App.vue'
+import { createApp } from 'vue';
+import App from './App.vue';
+import './css/style.css';
+import router from './router';
 
-createApp(App).mount('#app')
+const app = createApp(App);
+
+// 將vue-router傳遞給vue app
+app.use(router.router);
+//引入
+app.mount('#app')
