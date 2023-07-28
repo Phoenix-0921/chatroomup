@@ -1,6 +1,7 @@
 // 引入vue-router
 import { createRouter, createWebHistory } from 'vue-router';
 import HelloWorld from './components/HelloWorld.vue';
+import Chatroom from './components/pages/Chatroom.vue';
 
 
 // 定義路由
@@ -15,10 +16,10 @@ const routes = [
     //     component: HomePage
     // },
     // 文章頁
-//     { 
-//         path: '/article', 
-//         component: Article
-//     },
+    { 
+        path: '/chatroom', 
+        component: Chatroom
+    },
 ];
 
 // 建立VueRouter
