@@ -1,0 +1,102 @@
+<template>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <form class="form-inline" @submit.prevent="connect">
+                    <div class="form-group">
+                        <label for="connect">WebSocket 連接:</label>
+                        <button id="connect" class="btn btn-default" :disabled="connected" type="submit">連接</button>
+                        <button id="disconnect" class="btn btn-default" :disabled="!connected" type="button"
+                            @click="disconnect">關閉連接</button>
+                    </div>
+                </form>
+            </div>
+            <div class="col-md-6">
+                <form class="form-inline" @submit.prevent="sendName">
+                    <div class="form-group">
+                        <label for="name">發送訊息</label>
+                        <input v-model="message" type="text" id="name" class="form-control" placeholder="請輸入訊息">
+                    </div>
+                    <button id="send" class="btn btn-default">發送</button>
+                </form>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <table id="conversation" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>我的聊天室</th>
+                        </tr>
+                    </thead>
+                    <tbody id="chatRoom">
+                        <tr v-for="(message) in chatMessages" :key="index">
+                            <td>{{ message }}</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+export default {
+    name: 'Test2',
+    data() {
+            return {
+                connected: false,
+                message: '',
+                chatMessages: [],
+                heartbeatIntervalId: null, // 心跳間隔的計時器 ID
+            };
+        },
+        methods: {
+                connect() {
+                var socket = new SockJS('http://localhost:8080/ws');
+                this.stompClient = Stomp.over(socket);
+                var connectHeaders = {
+                    'client-id': '10'
+                };
+                this.stompClient.connect(connectHeaders, (frame) => {
+                    this.connected = true;
+                    console.log(connectHeaders);
+                    console.log('Connected: ' + frame);
+                    console.log('WebSocket Connection ID: ' + frame.headers['connection-id']);
+                    this.stompClient.subscribe('/topic/getResponse', (response) => {
+                    console.log(response);
+                    const responseMessage = JSON.parse(response.body).responseMessage;
+                    this.showConversation(responseMessage);
+                    });
+                });
+                },
+                    disconnect() {
+                        if (this.stompClient !== null) {
+                        this.stompClient.disconnect();
+                        }
+                        this.connected = false;
+                        console.log("Disconnected");
+                    },
+                // 移除 sendName 方法中的 showConversation 呼叫
+                sendName() {
+                var name = this.message;
+                this.message = '';  // 清空輸入框的內容
+                console.log(name);
+                console.log(this.stompClient);
+                this.stompClient.send("/app/messageControl", {}, JSON.stringify({ 'message': name }));
+                },
+                showConversation(responseMessage) {
+                    if (responseMessage && !this.chatMessages.includes(responseMessage)) {
+                    this.chatMessages.push(responseMessage);
+                    }
+                }
+                
+            }
+
+}
+
+
+</script>
+
+<style scoped></style>
