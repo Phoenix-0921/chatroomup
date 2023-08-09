@@ -2,8 +2,6 @@
     <div class="menu">
         <a href="#" class="back"><i class="fa fa-angle-left"></i></a>
         <div class="name">Random chat</div>
-        <div class="members">You</div>
-
     </div>
 
     <ol class="chat">
@@ -109,27 +107,23 @@ export default {
         connect() {
             var socket = new SockJS('http://localhost:8080/ws');
             this.stompClient = Stomp.over(socket);
-            var connectHeaders = {
-                'client-id': '10',
-            };
-            this.stompClient.connect(connectHeaders, (frame) => {
+
+            this.stompClient.connect({}, (frame) => {
                 this.connected = true;
-                console.log(connectHeaders);
-                console.log('Connected: ' + frame);
-                this.stompClient.subscribe('/topic/getResponse', (response) => {
-                    console.log(response);
-                    const responseMessage = JSON.parse(response.body).responseMessage;
-                    this.showConversation(responseMessage);
-                });
+
+                // 連接成功後，將 Cookie ID 和 WebSocket ID 送到後端
+                this.stompClient.send("/app/connect", {}, JSON.stringify({ 'cookieID': this.cookieID }));
             });
         },
 
         disconnect() {
-            if (this.stompClient !== null) {
-                this.stompClient.disconnect();
-            }
-            this.connected = false;
-            console.log('Disconnected');
+            axios.post("http://localhost:8080/chat/disconnect", { cookieID: this.cookieID })
+                .then(response => {
+                    console.log(response.data);
+                })
+                .catch(error => {
+                    console.error(error);
+                });
         },
 
 
