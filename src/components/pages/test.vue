@@ -1,7 +1,7 @@
 <template>
     <div class="menu">
         <a href="#" class="back"><i class="fa fa-angle-left"></i></a>
-        <div class="name">Random chat</div>
+        <div class="name">Random chat {{ this.cookieID }}</div>
     </div>
 
     <ol class="chat">
@@ -11,7 +11,7 @@
                 <time>時間戳記</time>
             </div>
         </li>
-        <button @click="connect" v-if="!connected">連接</button>
+        <button @click="connectAndMatch" v-if="!connected">連接</button>
         <button @click="disconnect" v-if="connected">斷開連接</button>
         <li class="self">
             <div class="msg">
@@ -40,6 +40,7 @@
     </div>
 </template>
 <script>
+import axios from 'axios';
 
 export default {
     name: 'test1',
@@ -101,29 +102,73 @@ export default {
         },
         showCookieID() {
             this.cookieID = this.getOrCreateCookieID();
-            console.log("Cookie ID:", this.cookieID);
         },
 
-        connect() {
-            var socket = new SockJS('http://localhost:8080/ws');
-            this.stompClient = Stomp.over(socket);
-
-            this.stompClient.connect({}, (frame) => {
-                this.connected = true;
-
-                // 連接成功後，將 Cookie ID 和 WebSocket ID 送到後端
-                this.stompClient.send("/app/connect", {}, JSON.stringify({ 'cookieID': this.cookieID }));
-            });
-        },
-
-        disconnect() {
-            axios.post("http://localhost:8080/chat/disconnect", { cookieID: this.cookieID })
+        connectAndMatch() {
+            axios.post('http://localhost:8080/chat/match', null, {
+                params: {
+                    cookieID: this.cookieID,
+                },
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
                 .then(response => {
-                    console.log(response.data);
+                    const receivedWebSocketId = response.data.websocketId;
+
+                    if (receivedWebSocketId) {
+                        console.log('Received WebSocket ID:', receivedWebSocketId);
+                        this.websocketId = receivedWebSocketId;
+                        this.connectWebSocket();
+                    } else {
+                        console.error('無法取得WebSocket ID');
+                    }
                 })
                 .catch(error => {
-                    console.error(error);
+                    console.error('匹配請求失敗:', error);
+                    console.error('錯誤詳細資訊:', error.response);
                 });
+        },
+
+
+        connectWebSocket() {
+            // 使用 wss 协议连接 WebSocket
+            var socket = new SockJS('https://localhost:8080/ws'); // 或 ws://localhost:8080/ws
+            this.stompClient = Stomp.over(socket);
+            var connectHeaders = {
+                'websocketID': this.websocketId,
+            };
+            this.stompClient.connect(connectHeaders, (frame) => {
+                this.connected = true;
+                console.log(connectHeaders);
+                console.log('Connected: ' + frame);
+                this.stompClient.subscribe('/topic/getResponse', (response) => {
+                    console.log(response);
+                    const responseMessage = JSON.parse(response.body).responseMessage;
+                    this.showConversation(responseMessage);
+                });
+            });
+            this.heartbeatIntervalId = setInterval(() => {
+                this.sendHeartbeat();
+            }, 5000); // 5 秒發送一次心跳訊號
+        },
+
+
+        sendHeartbeat() {
+            if (this.stompClient && this.connected) {
+                this.stompClient.send("/app/heartbeat", {});
+            }
+        },
+        disconnect() {
+            if (this.stompClient !== null) {
+                this.stompClient.disconnect();
+            }
+            this.connected = false;
+            console.log('Disconnected');
+            if (this.heartbeatIntervalId) {
+                clearInterval(this.heartbeatIntervalId);
+                this.heartbeatIntervalId = null;
+            }
         },
 
 

@@ -1,7 +1,7 @@
 <template>
     <div class="menu">
         <a href="#" class="back"><i class="fa fa-angle-left"></i></a>
-        <div class="name">Random chat</div>
+        <div class="name">Random chat {{ this.cookieID }}</div>
     </div>
 
     <ol class="chat">
@@ -102,18 +102,23 @@ export default {
         },
         showCookieID() {
             this.cookieID = this.getOrCreateCookieID();
-            console.log("Cookie ID:", this.cookieID);
         },
 
         connectAndMatch() {
             // 點擊連接按鈕後立即發送匹配請求
-            axios.post('http://localhost:8080/ws/chat/match', {
-                cookieID: this.cookieID,
+            axios.post('http://localhost:8080/chat/match', null, {
+                params: {
+                    cookieID: this.cookieID,
+                },
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             })
                 .then(response => {
                     const receivedWebSocketId = response.data.websocketId;
 
                     if (receivedWebSocketId) {
+                        console.log('Received WebSocket ID:', receivedWebSocketId);
                         this.websocketId = receivedWebSocketId;
                         this.connectWebSocket();
                         this.connected = true; // 將 connected 設置為 true，顯示聊天介面
@@ -123,8 +128,10 @@ export default {
                 })
                 .catch(error => {
                     console.error('匹配請求失敗:', error);
+                    console.error('錯誤詳細資訊:', error.response);
                 });
         },
+
 
         connectWebSocket() {
             // 使用 this.websocketId 來建立 WebSocket 連接
