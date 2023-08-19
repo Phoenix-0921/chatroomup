@@ -104,38 +104,44 @@ export default {
             this.cookieID = this.getOrCreateCookieID();
         },
 
-        connectAndMatch() {
-            // 點擊連接按鈕後立即發送匹配請求
-            axios.post('http://localhost:8080/chat/match', null, {
-                params: {
-                    cookieID: this.cookieID,
-                },
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-                .then(response => {
-                    const receivedWebSocketId = response.data.websocketId;
+        async connectAndMatch() {
+      try {
+        const waitingDataResponse = await axios.get('http://localhost:8080/chat/checkWaiting', {
+          params: {
+            cookieID: this.cookieID,
+          },
+        });
 
-                    if (receivedWebSocketId) {
-                        console.log('Received WebSocket ID:', receivedWebSocketId);
-                        this.websocketId = receivedWebSocketId;
-                        this.connectWebSocket();
-                        this.connected = true; // 將 connected 設置為 true，顯示聊天介面
-                    } else {
-                        console.error('無法取得WebSocket ID');
-                    }
-                })
-                .catch(error => {
-                    console.error('匹配請求失敗:', error);
-                    console.error('錯誤詳細資訊:', error.response);
-                });
-        },
+        const waitingData = waitingDataResponse.data;
+        if (waitingData) {
+          const otherWebSocketId = waitingData.websocketId;
+          // 建立 WebSocket 连接并进行匹配
+          // ...
+        } else {
+          const matchResponse = await axios.post('http://localhost:8080/chat/match', null, {
+            params: {
+              cookieID: this.cookieID,
+            },
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          const receivedWebSocketId = matchResponse.data.websocketId;
+          // 处理匹配结果，建立 WebSocket 连接
+          // ...
+        }
+      } catch (error) {
+        console.error('匹配請求失敗:', error);
+        console.error('錯誤詳細資訊:', error.response);
+      }
+    },
+    
 
 
         connectWebSocket() {
-            // 使用 this.websocketId 來建立 WebSocket 連接
-            var socket = new SockJS('http://localhost:8080/ws');
+            // 使用 wss 协议连接 WebSocket
+            var socket = new SockJS('https://localhost:8080/ws'); // 或 ws://localhost:8080/ws
             this.stompClient = Stomp.over(socket);
             var connectHeaders = {
                 'websocketID': this.websocketId,
@@ -154,6 +160,7 @@ export default {
                 this.sendHeartbeat();
             }, 5000); // 5 秒發送一次心跳訊號
         },
+
 
 
         sendHeartbeat() {

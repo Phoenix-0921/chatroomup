@@ -57,6 +57,7 @@ export default {
             stompClient: null,
             chatMessages: [],
             heartbeatIntervalId: null, // 心跳間隔的計時器 ID
+            webSocketID: "",
         }
     },
     //新增watch方法
@@ -114,13 +115,16 @@ export default {
                 },
             })
                 .then(response => {
-                    const receivedWebSocketId = response.data.websocketId;
+                    const receivedWebSocketId = response.data;
+
 
                     if (receivedWebSocketId) {
-                        console.log('Received WebSocket ID:', receivedWebSocketId);
-                        this.websocketId = receivedWebSocketId;
+                        console.log('Received WebSocket ID from backend:', receivedWebSocketId);
+                        this.webSocketID = receivedWebSocketId;
                         this.connectWebSocket();
+                        console.log(this.websocketId);
                     } else {
+                        console.log(response.data)
                         console.error('無法取得WebSocket ID');
                     }
                 })
@@ -132,8 +136,8 @@ export default {
 
 
         connectWebSocket() {
-            // 使用 wss 协议连接 WebSocket
-            var socket = new SockJS('https://localhost:8080/ws'); // 或 ws://localhost:8080/ws
+            // 使用 ws 協議連接 WebSocket
+            var socket = new SockJS('http://localhost:8080/ws'); // 修改這裡的協議為 ws
             this.stompClient = Stomp.over(socket);
             var connectHeaders = {
                 'websocketID': this.websocketId,
