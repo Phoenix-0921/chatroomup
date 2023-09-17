@@ -58,6 +58,7 @@ export default {
             chatMessages: [],
             heartbeatIntervalId: null, // 心跳間隔的計時器 ID
             webSocketID: "",
+            receivedWebSocketId: "",
         }
     },
     //新增watch方法
@@ -104,7 +105,6 @@ export default {
         showCookieID() {
             this.cookieID = this.getOrCreateCookieID();
         },
-
         connectAndMatch() {
             axios.post('http://localhost:8080/chat/match', null, {
                 params: {
@@ -116,13 +116,11 @@ export default {
             })
                 .then(response => {
                     const receivedWebSocketId = response.data;
-
-
                     if (receivedWebSocketId) {
                         console.log('Received WebSocket ID from backend:', receivedWebSocketId);
                         this.webSocketID = receivedWebSocketId;
                         this.connectWebSocket();
-                        console.log(this.websocketId);
+                        console.log(this.webSocketID);
                     } else {
                         console.log(response.data)
                         console.error('無法取得WebSocket ID');
@@ -133,14 +131,12 @@ export default {
                     console.error('錯誤詳細資訊:', error.response);
                 });
         },
-
-
         connectWebSocket() {
             // 使用 ws 協議連接 WebSocket
             var socket = new SockJS('http://localhost:8080/ws'); // 修改這裡的協議為 ws
             this.stompClient = Stomp.over(socket);
             var connectHeaders = {
-                'websocketID': this.websocketId,
+                'websocketID': this.webSocketID,
             };
             this.stompClient.connect(connectHeaders, (frame) => {
                 this.connected = true;
@@ -156,8 +152,6 @@ export default {
                 this.sendHeartbeat();
             }, 5000); // 5 秒發送一次心跳訊號
         },
-
-
         sendHeartbeat() {
             if (this.stompClient && this.connected) {
                 this.stompClient.send("/app/heartbeat", {});

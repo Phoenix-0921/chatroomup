@@ -57,6 +57,7 @@ export default {
             stompClient: null,
             chatMessages: [],
             heartbeatIntervalId: null, // 心跳間隔的計時器 ID
+            webSocketID: "",
         }
     },
     //新增watch方法
@@ -104,44 +105,37 @@ export default {
             this.cookieID = this.getOrCreateCookieID();
         },
 
-        async connectAndMatch() {
-      try {
-        const waitingDataResponse = await axios.get('http://localhost:8080/chat/checkWaiting', {
-          params: {
-            cookieID: this.cookieID,
-          },
-        });
+        connectAndMatch() {
+            axios.post('http://localhost:8080/chat/match', null, {
+                params: {
+                    cookieID: this.cookieID,
+                },
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+                .then(response => {
+                    const receivedWebSocketId = response.data.websocketId;
 
-        const waitingData = waitingDataResponse.data;
-        if (waitingData) {
-          const otherWebSocketId = waitingData.websocketId;
-          // 建立 WebSocket 连接并进行匹配
-          // ...
-        } else {
-          const matchResponse = await axios.post('http://localhost:8080/chat/match', null, {
-            params: {
-              cookieID: this.cookieID,
-            },
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          });
+                    if (receivedWebSocketId) {
+                        console.log('Received WebSocket ID:', receivedWebSocketId);
+                        this.websocketId = receivedWebSocketId; // 將 WebSocket ID 存儲到 this.websocketId
+                        this.connectWebSocket(); // 直接建立 WebSocket 連接
+                    } else {
+                        console.error('無法取得WebSocket ID');
+                    }
+                })
+                .catch(error => {
+                    console.error('匹配請求失敗:', error);
+                    console.error('錯誤詳細資訊:', error.response);
+                });
+        },
 
-          const receivedWebSocketId = matchResponse.data.websocketId;
-          // 处理匹配结果，建立 WebSocket 连接
-          // ...
-        }
-      } catch (error) {
-        console.error('匹配請求失敗:', error);
-        console.error('錯誤詳細資訊:', error.response);
-      }
-    },
-    
 
 
         connectWebSocket() {
-            // 使用 wss 协议连接 WebSocket
-            var socket = new SockJS('https://localhost:8080/ws'); // 或 ws://localhost:8080/ws
+            // 使用 ws 協議連接 WebSocket
+            var socket = new SockJS('http://localhost:8080/ws'); // 修改這裡的協議為 ws
             this.stompClient = Stomp.over(socket);
             var connectHeaders = {
                 'websocketID': this.websocketId,
@@ -160,7 +154,6 @@ export default {
                 this.sendHeartbeat();
             }, 5000); // 5 秒發送一次心跳訊號
         },
-
 
 
         sendHeartbeat() {
